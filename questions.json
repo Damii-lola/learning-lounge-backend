@@ -1,0 +1,132 @@
+{
+  "subjects": ["Mathematics", "Physics", "Chemistry", "Biology", "English", "Computer Science"],
+  "years": ["2024", "2023", "2022", "2021", "2020", "2019"],
+  "questions": [
+    {
+      "id": "p1", "subject": "Physics", "year": "2023", "source": "WAEC",
+      "question": "A block with an initial speed of 10 m/s slides on a horizontal surface and comes to rest after travelling a distance of 25 m. What is the coefficient of kinetic friction? (g = 9.8 m/s²)",
+      "options": ["0.1", "0.3", "0.2", "0.5"],
+      "answer": 2,
+      "explanation": "v² = u² − 2μgs → 0 = 100 − 2(μ)(9.8)(25) → μ = 100/490 ≈ 0.2"
+    },
+    {
+      "id": "p2", "subject": "Physics", "year": "2023", "source": "WAEC",
+      "question": "If the length of a simple pendulum is 120 cm, calculate its frequency. [π = 22/7, g = 10 ms⁻²]",
+      "options": ["2.8 Hz", "1.2 Hz", "12 Hz", "0.5 Hz"],
+      "answer": 3,
+      "explanation": "T = 2π√(L/g) = 2(22/7)√(1.2/10) ≈ 2.18 s, so f = 1/T ≈ 0.5 Hz"
+    },
+    {
+      "id": "p3", "subject": "Physics", "year": "2022", "source": "WAEC",
+      "question": "When a spiral spring is compressed by 200 N, it stores 0.16 J of energy. What energy will it store when compressed by 700 N?",
+      "options": ["1.12 J", "0.48 J", "1.96 J", "0.84 J"],
+      "answer": 2,
+      "explanation": "E ∝ F², so E₂ = 0.16 × (700/200)² = 0.16 × 12.25 = 1.96 J"
+    },
+    {
+      "id": "p4", "subject": "Physics", "year": "2022", "source": "NECO",
+      "question": "A stone is thrown vertically upward with a velocity of 20 m/s. How high does it go? (g = 10 m/s²)",
+      "options": ["10 m", "20 m", "40 m", "5 m"],
+      "answer": 1,
+      "explanation": "v² = u² − 2gs → 0 = 400 − 20s → s = 20 m"
+    },
+    {
+      "id": "p5", "subject": "Physics", "year": "2021", "source": "NECO",
+      "question": "Which of the following is a scalar quantity?",
+      "options": ["Velocity", "Acceleration", "Force", "Speed"],
+      "answer": 3,
+      "explanation": "Speed has magnitude only (no direction) — it is a scalar. The rest are vectors."
+    },
+    {
+      "id": "cs1", "subject": "Computer Science", "year": "2023", "source": "WAEC",
+      "question": "The first calculator was built by?",
+      "options": ["Marie Jacquad", "Blaise Pascal", "Charles Babbage", "John Napier"],
+      "answer": 1,
+      "explanation": "Blaise Pascal invented the Pascaline mechanical calculator in 1642."
+    },
+    {
+      "id": "cs2", "subject": "Computer Science", "year": "2023", "source": "NECO",
+      "question": "What does CPU stand for?",
+      "options": ["Central Processing Unit", "Computer Personal Unit", "Central Program Utility", "Core Processing Unit"],
+      "answer": 0,
+      "explanation": "CPU = Central Processing Unit — it fetches and executes program instructions."
+    },
+    {
+      "id": "cs3", "subject": "Computer Science", "year": "2022", "source": "WAEC",
+      "question": "What is the binary equivalent of the decimal number 13?",
+      "options": ["1011", "1101", "1110", "1001"],
+      "answer": 1,
+      "explanation": "13 = 8 + 4 + 1 = 2³ + 2² + 2⁰ = 1101₂"
+    },
+    {
+      "id": "cs4", "subject": "Computer Science", "year": "2021", "source": "NECO",
+      "question": "Which generation of computers used transistors?",
+      "options": ["First generation", "Second generation", "Third generation", "Fourth generation"],
+      "answer": 1,
+      "explanation": "Second generation computers (1956–1963) replaced vacuum tubes with transistors."
+    },
+    {
+      "id": "m1", "subject": "Mathematics", "year": "2023", "source": "WAEC",
+      "question": "Simplify: (2³ × 2⁴) ÷ 2⁵",
+      "options": ["2", "4", "8", "16"],
+      "answer": 1,
+      "explanation": "2³ × 2⁴ = 2⁷; then 2⁷ ÷ 2⁵ = 2² = 4"
+    },
+    {
+      "id": "m2", "subject": "Mathematics", "year": "2023", "source": "NECO",
+      "question": "Find the value of x if 3x − 7 = 14",
+      "options": ["5", "7", "9", "3"],
+      "answer": 1,
+      "explanation": "3x = 14 + 7 = 21 → x = 7"
+    },
+    {
+      "id": "m3", "subject": "Mathematics", "year": "2022", "source": "WAEC",
+      "question": "What is the area of a circle with radius 7 cm? (π = 22/7)",
+      "options": ["154 cm²", "44 cm²", "22 cm²", "308 cm²"],
+      "answer": 0,
+      "explanation": "A = πr² = (22/7) × 49 = 154 cm²"
+    },
+    {
+      "id": "c1", "subject": "Chemistry", "year": "2023", "source": "WAEC",
+      "question": "What is the chemical symbol for Gold?",
+      "options": ["Go", "Gd", "Au", "Ag"],
+      "answer": 2,
+      "explanation": "Au comes from Gold's Latin name 'Aurum'."
+    },
+    {
+      "id": "c2", "subject": "Chemistry", "year": "2022", "source": "NECO",
+      "question": "What is the pH of a neutral solution at 25°C?",
+      "options": ["0", "7", "14", "1"],
+      "answer": 1,
+      "explanation": "A neutral solution has exactly pH 7 at 25°C."
+    },
+    {
+      "id": "b1", "subject": "Biology", "year": "2023", "source": "WAEC",
+      "question": "What is the powerhouse of the cell?",
+      "options": ["Nucleus", "Ribosome", "Mitochondria", "Golgi apparatus"],
+      "answer": 2,
+      "explanation": "Mitochondria produce ATP through cellular respiration — hence the 'powerhouse' nickname."
+    },
+    {
+      "id": "b2", "subject": "Biology", "year": "2022", "source": "NECO",
+      "question": "Which blood group is the universal donor?",
+      "options": ["A", "B", "AB", "O"],
+      "answer": 3,
+      "explanation": "O negative lacks A, B, and Rh antigens — it can donate to anyone."
+    },
+    {
+      "id": "e1", "subject": "English", "year": "2023", "source": "WAEC",
+      "question": "Choose the word closest in meaning to \"OBSTINATE\"",
+      "options": ["Flexible", "Stubborn", "Gentle", "Timid"],
+      "answer": 1,
+      "explanation": "Obstinate = stubbornly refusing to change one's opinion or course of action."
+    },
+    {
+      "id": "e2", "subject": "English", "year": "2022", "source": "NECO",
+      "question": "\"The wind whispered through the trees\" — identify the figure of speech.",
+      "options": ["Simile", "Metaphor", "Personification", "Hyperbole"],
+      "answer": 2,
+      "explanation": "Personification — giving human traits (whispering) to a non-human subject (wind)."
+    }
+  ]
+}
