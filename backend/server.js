@@ -1,156 +1,94 @@
-// ─── Learning Lounge Backend ──────────────────────────────────────────────────
-// Hosted on Render. Reads/writes questions.json in your GitHub repo via GitHub API.
-//
-// Required environment variables (set in Render dashboard):
-//   GITHUB_TOKEN   — your GitHub Personal Access Token (classic, repo scope)
-//   GITHUB_OWNER   — your GitHub username  e.g. "johndoe"
-//   GITHUB_REPO    — your repository name  e.g. "learning-lounge"
-//   GITHUB_FILE    — path to data file     e.g. "questions.json"
-//   ADMIN_SECRET   — a password you choose for the admin website
-
+require('dotenv').config();
 const express = require('express');
-const cors    = require('cors');
-const axios   = require('axios');
+const cors = require('cors');
+const mongoose = require('mongoose');
 
-const app  = express();
-const PORT = process.env.PORT || 3000;
-
+const app = express();
 app.use(cors());
 app.use(express.json());
 
-// ── GitHub helpers ────────────────────────────────────────────────────────────
+// Connect to MongoDB
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/learning-lounge', {
+  useNewUrlParser: true,
+  useUnifiedTopology: true,
+})
+.then(() => console.log('Connected to MongoDB'))
+.catch(err => console.error('MongoDB connection error:', err));
 
-const GH_HEADERS = () => ({
-  Authorization: `token ${process.env.GITHUB_TOKEN}`,
-  Accept: 'application/vnd.github.v3+json',
-  'Content-Type': 'application/json',
+// Define Schemas
+const subjectSchema = new mongoose.Schema({
+  id: { type: String, required: true, unique: true },
+  label: { type: String, required: true },
+  icon: { type: String, default: '📚' },
+  color: { type: String, default: '#1565C0' },
+  bg: { type: String, default: '#E3F2FD' },
 });
 
-const FILE_URL = () =>
-  `https://api.github.com/repos/${process.env.GITHUB_OWNER}/${process.env.GITHUB_REPO}/contents/${process.env.GITHUB_FILE}`;
-
-// Read current file from GitHub (returns { data, sha })
-async function readFile() {
-  const res  = await axios.get(FILE_URL(), { headers: GH_HEADERS() });
-  const raw  = Buffer.from(res.data.content, 'base64').toString('utf8');
-  return { data: JSON.parse(raw), sha: res.data.sha };
-}
-
-// Write updated data back to GitHub
-async function writeFile(data, sha) {
-  const content = Buffer.from(JSON.stringify(data, null, 2)).toString('base64');
-  await axios.put(FILE_URL(), {
-    message: 'Update questions via Learning Lounge admin',
-    content,
-    sha,
-  }, { headers: GH_HEADERS() });
-}
-
-// ── Admin auth middleware ─────────────────────────────────────────────────────
-
-function requireAdmin(req, res, next) {
-  const secret = req.headers['x-admin-secret'];
-  if (!secret || secret !== process.env.ADMIN_SECRET) {
-    return res.status(401).json({ error: 'Unauthorized' });
-  }
-  next();
-}
-
-// ── Routes ────────────────────────────────────────────────────────────────────
-
-// GET /api/data — used by the app to load all questions and catalog
-app.get('/api/data', async (req, res) => {
-  try {
-    const { data } = await readFile();
-    res.json(data);
-  } catch (err) {
-    console.error('GET /api/data error:', err.message);
-    res.status(500).json({ error: 'Failed to load data' });
-  }
+const yearSchema = new mongoose.Schema({
+  subject: { type: String, required: true },
+  year: { type: String, required: true },
 });
 
-// POST /api/questions — add a new question (admin only)
-app.post('/api/questions', requireAdmin, async (req, res) => {
-  try {
-    const { subject, year, source, question, options, answer, explanation } = req.body;
-
-    if (!subject || !year || !source || !question || !options || answer === undefined || !explanation) {
-      return res.status(400).json({ error: 'Missing required fields' });
-    }
-
-    const { data, sha } = await readFile();
-
-    const newQ = {
-      id: `q_${Date.now()}`,
-      subject, year, source, question,
-      options, answer: parseInt(answer), explanation,
-    };
-
-    data.questions.push(newQ);
-    await writeFile(data, sha);
-
-    res.json({ success: true, question: newQ });
-  } catch (err) {
-    console.error('POST /api/questions error:', err.message);
-    res.status(500).json({ error: 'Failed to add question' });
-  }
+const questionSchema = new mongoose.Schema({
+  subject: { type: String, required: true },
+  year: { type: String, required: true },
+  exam: { type: String, required: true, enum: ['WAEC', 'NECO'] },
+  text: { type: String, required: true },
+  options: { type: [String], required: true },
+  answer: { type: Number, required: true },
+  explanation: { type: String },
 });
 
-// PUT /api/questions/:id — edit a question (admin only)
-app.put('/api/questions/:id', requireAdmin, async (req, res) => {
-  try {
-    const { data, sha } = await readFile();
-    const idx = data.questions.findIndex(q => q.id === req.params.id);
+const Subject = mongoose.model('Subject', subjectSchema);
+const Year = mongoose.model('Year', yearSchema);
+const Question = mongoose.model('Question', questionSchema);
 
-    if (idx === -1) return res.status(404).json({ error: 'Question not found' });
-
-    data.questions[idx] = { ...data.questions[idx], ...req.body, id: req.params.id };
-    await writeFile(data, sha);
-
-    res.json({ success: true, question: data.questions[idx] });
-  } catch (err) {
-    console.error('PUT /api/questions error:', err.message);
-    res.status(500).json({ error: 'Failed to update question' });
-  }
+// Routes
+app.get('/subjects', async (req, res) => {
+  const subjects = await Subject.find();
+  res.json(subjects);
 });
 
-// DELETE /api/questions/:id — remove a question (admin only)
-app.delete('/api/questions/:id', requireAdmin, async (req, res) => {
-  try {
-    const { data, sha } = await readFile();
-    const before = data.questions.length;
-    data.questions = data.questions.filter(q => q.id !== req.params.id);
-
-    if (data.questions.length === before) {
-      return res.status(404).json({ error: 'Question not found' });
-    }
-
-    await writeFile(data, sha);
-    res.json({ success: true });
-  } catch (err) {
-    console.error('DELETE /api/questions error:', err.message);
-    res.status(500).json({ error: 'Failed to delete question' });
-  }
+app.post('/subjects', async (req, res) => {
+  const subject = new Subject(req.body);
+  await subject.save();
+  res.json(subject);
 });
 
-// PUT /api/catalog — update subjects and/or years lists (admin only)
-app.put('/api/catalog', requireAdmin, async (req, res) => {
-  try {
-    const { subjects, years } = req.body;
-    const { data, sha } = await readFile();
-
-    if (subjects) data.subjects = subjects;
-    if (years)    data.years    = years;
-
-    await writeFile(data, sha);
-    res.json({ success: true, subjects: data.subjects, years: data.years });
-  } catch (err) {
-    console.error('PUT /api/catalog error:', err.message);
-    res.status(500).json({ error: 'Failed to update catalog' });
-  }
+app.get('/years', async (req, res) => {
+  const { subject, exam } = req.query;
+  const query = { subject };
+  if (exam && exam !== 'All') query.exam = exam;
+  const years = await Year.find(query).distinct('year');
+  res.json(years);
 });
 
-// Health check
-app.get('/', (req, res) => res.json({ status: 'Learning Lounge backend running ✅' }));
+app.post('/years', async (req, res) => {
+  const year = new Year(req.body);
+  await year.save();
+  res.json(year);
+});
 
-app.listen(PORT, () => console.log(`Server running on port ${PORT}`));
+app.get('/questions', async (req, res) => {
+  const { subject, year, exam } = req.query;
+  const query = { subject, year };
+  if (exam && exam !== 'All') query.exam = exam;
+  const questions = await Question.find(query);
+  res.json(questions);
+});
+
+app.post('/questions', async (req, res) => {
+  if (Array.isArray(req.body.questions)) {
+    await Question.insertMany(req.body.questions);
+  } else {
+    const question = new Question(req.body);
+    await question.save();
+  }
+  res.json({ message: 'Questions saved!' });
+});
+
+// Start server
+const PORT = process.env.PORT || 3000;
+app.listen(PORT, () => {
+  console.log(`Server running on port ${PORT}`);
+});
