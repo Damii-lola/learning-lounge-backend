@@ -1,90 +1,128 @@
-require('dotenv').config();
 const express = require('express');
 const cors = require('cors');
-const mongoose = require('mongoose');
+const admin = require('firebase-admin');
+const serviceAccount = require('./serviceAccountKey.json');
 
 const app = express();
 app.use(cors());
 app.use(express.json());
 
-// Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/learning-lounge', {
-  useNewUrlParser: true,
-  useUnifiedTopology: true,
-})
-.then(() => console.log('Connected to MongoDB'))
-.catch(err => console.error('MongoDB connection error:', err));
-
-// Define Schemas
-const subjectSchema = new mongoose.Schema({
-  id: { type: String, required: true, unique: true },
-  label: { type: String, required: true },
-  icon: { type: String, default: '📚' },
-  color: { type: String, default: '#1565C0' },
-  bg: { type: String, default: '#E3F2FD' },
+// Initialize Firebase Admin SDK
+admin.initializeApp({
+  credential: admin.credential.cert(serviceAccount)
 });
 
-const yearSchema = new mongoose.Schema({
-  subject: { type: String, required: true },
-  year: { type: String, required: true },
-});
-
-const questionSchema = new mongoose.Schema({
-  subject: { type: String, required: true },
-  year: { type: String, required: true },
-  exam: { type: String, required: true, enum: ['WAEC', 'NECO'] },
-  text: { type: String, required: true },
-  options: { type: [String], required: true },
-  answer: { type: Number, required: true },
-  explanation: { type: String },
-});
-
-const Subject = mongoose.model('Subject', subjectSchema);
-const Year = mongoose.model('Year', yearSchema);
-const Question = mongoose.model('Question', questionSchema);
+const db = admin.firestore();
 
 // Routes
+
+// Get all subjects
 app.get('/subjects', async (req, res) => {
-  const subjects = await Subject.find();
-  res.json(subjects);
-});
-
-app.post('/subjects', async (req, res) => {
-  const subject = new Subject(req.body);
-  await subject.save();
-  res.json(subject);
-});
-
-app.get('/years', async (req, res) => {
-  const { subject, exam } = req.query;
-  const query = { subject };
-  if (exam && exam !== 'All') query.exam = exam;
-  const years = await Year.find(query).distinct('year');
-  res.json(years);
-});
-
-app.post('/years', async (req, res) => {
-  const year = new Year(req.body);
-  await year.save();
-  res.json(year);
-});
-
-app.get('/questions', async (req, res) => {
-  const { subject, year, exam } = req.query;
-  const query = { subject, year };
-  if (exam && exam !== 'All') query.exam = exam;
-  const questions = await Question.find(query);
-  res.json(questions);
-});
-
-app.post('/questions', async (req, res) => {
-  if (Array.isArray(req.body.questions)) {
-    await Question.insertMany(req.body.questions);
-  } else {
-    const question = new Question(req.body);
-    await question.save();
+  try {
+    const snapshot = await db.collection('subjects').get();
+    const subjects = [];
+    snapshot.forEach(doc => {
+      subjects.push({ id: doc.id, ...doc.data() });
+    });
+    res.json(subjects);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
   }
-  res.json({ message: 'Questions saved!' });
+});
+
+// Add a new subject
+app.post('/subjects', async (req, res) => {
+  try {
+    const { id, label, icon, color, bg } = req.body;
+    await db.collection('subjects').doc(id).set({ label, icon, color, bg });
+    res.json({ id, label, icon, color, bg });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get years for a subject (filtered by exam type)
+app.get('/years', async (req, res) => {
+  try {
+    const { subject, exam } = req.query;
+    let snapshot;
+    if (exam && exam !== 'All') {
+      snapshot = await db.collection('questions')
+        .where('subject', '==', subject)
+        .where('exam', '==', exam)
+        .get();
+    } else {
+      snapshot = await db.collection('questions')
+        .where('subject', '==', subject)
+        .get();
+    }
+    const years = [];
+    snapshot.forEach(doc => {
+      years.push(doc.data().year);
+    });
+    res.json([...new Set(years)].sort().reverse());
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add a new year (just a placeholder, years are derived from questions)
+app.post('/years', async (req, res) => {
+  try {
+    const { subject, year } = req.body;
+    // In Firebase, years are just a property of questions, so this is a no-op
+    res.json({ message: 'Years are managed via questions. No need to add years directly.' });
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Get questions for subject/year/exam
+app.get('/questions', async (req, res) => {
+  try {
+    const { subject, year, exam } = req.query;
+    let query = db.collection('questions').where('subject', '==', subject);
+    if (year) query = query.where('year', '==', year);
+    if (exam && exam !== 'All') query = query.where('exam', '==', exam);
+    const snapshot = await query.get();
+    const questions = [];
+    snapshot.forEach(doc => {
+      questions.push({ id: doc.id, ...doc.data() });
+    });
+    res.json(questions);
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
+});
+
+// Add a new question or multiple questions
+app.post('/questions', async (req, res) => {
+  try {
+    if (Array.isArray(req.body.questions)) {
+      const batch = db.batch();
+      req.body.questions.forEach(q => {
+        const docRef = db.collection('questions').doc();
+        batch.set(docRef, {
+          subject: req.body.subject,
+          year: req.body.year,
+          exam: req.body.exam || 'WAEC',
+          text: q.text,
+          options: q.options,
+          answer: q.answer,
+          explanation: q.explanation,
+        });
+      });
+      await batch.commit();
+      res.json({ message: 'Questions saved!' });
+    } else {
+      const { subject, year, exam, text, options, answer, explanation } = req.body;
+      const docRef = db.collection('questions').doc();
+      await docRef.set({ subject, year, exam, text, options, answer, explanation });
+      res.json({ id: docRef.id, subject, year, exam, text, options, answer, explanation });
+    }
+  } catch (error) {
+    res.status(500).json({ error: error.message });
+  }
 });
 
 // Start server
