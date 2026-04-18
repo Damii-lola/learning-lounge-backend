@@ -1,0 +1,12 @@
+{
+  "subjects": [
+    { "id": "physics", "name": "Physics" },
+    { "id": "math", "name": "Mathematics" },
+    { "id": "chemistry", "name": "Chemistry" },
+    { "id": "biology", "name": "Biology" },
+    { "id": "english", "name": "English" },
+    { "id": "cs", "name": "Computer Science" }
+  ],
+  "years": [2023, 2024],
+  "questions": []
+}
