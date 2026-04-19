@@ -8,16 +8,15 @@ const app = express();
 const port = process.env.PORT || 3000;
 
 // Middleware
-app.use(cors()); // Allow requests from your app and website
+app.use(cors());
 app.use(express.json());
 
 // Supabase Client (using service_role key for full access)
-// WARNING: Keep this key secret! Never expose it in frontend code.
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Helper: get exam type ID from name (used in /questions filtering)
+// Helper: get exam type ID from name
 async function getExamTypeId(name) {
     const { data } = await supabase
         .from('exam_types')
@@ -65,7 +64,6 @@ app.get('/exam-types', async (req, res) => {
 });
 
 // ==================== YEARS ====================
-// Get all years (ordered newest first)
 app.get('/years', async (req, res) => {
     const { data, error } = await supabase
         .from('years')
@@ -93,21 +91,18 @@ app.delete('/years/:id', async (req, res) => {
 });
 
 // ==================== YEARS AVAILABLE (for app) ====================
-// FIXED: Returns ALL years from the years table (newly added years appear immediately)
 app.get('/years-available', async (req, res) => {
     const { data, error } = await supabase
         .from('years')
         .select('year')
         .order('year', { ascending: false });
-    
     if (error) return res.status(500).json({ error: error.message });
-    
     const years = data.map(item => item.year);
     res.json(years);
 });
 
 // ==================== QUESTIONS ====================
-// Get questions filtered by subject, year, and exam type
+// GET /questions – supports filtering by subject_id, year, exam_type (name)
 app.get('/questions', async (req, res) => {
     const { subject_id, year, exam_type } = req.query;
     
@@ -122,13 +117,16 @@ app.get('/questions', async (req, res) => {
             option_d,
             correct_option,
             explanation,
-            subjects!inner(name),
-            exam_types!inner(name),
-            years!inner(year)
-        `)
-        .eq('subject_id', subject_id)
-        .eq('years.year', year);
+            subject_id,
+            exam_type_id,
+            year_id,
+            subjects!inner(id, name),
+            exam_types!inner(id, name),
+            years!inner(id, year)
+        `);
 
+    if (subject_id) query = query.eq('subject_id', subject_id);
+    if (year) query = query.eq('years.year', year);
     if (exam_type && exam_type !== 'All') {
         const examId = await getExamTypeId(exam_type);
         if (examId) query = query.eq('exam_type_id', examId);
@@ -137,7 +135,6 @@ app.get('/questions', async (req, res) => {
     const { data, error } = await query;
     if (error) return res.status(500).json({ error: error.message });
     
-    // Transform to cleaner format expected by app
     const questions = data.map(q => ({
         id: q.id,
         text: q.question_text,
@@ -145,13 +142,16 @@ app.get('/questions', async (req, res) => {
         answer: q.correct_option ? ['A', 'B', 'C', 'D'].indexOf(q.correct_option) : 0,
         explanation: q.explanation,
         subject: q.subjects.name,
+        subject_id: q.subject_id,
         examType: q.exam_types.name,
-        year: q.years.year
+        exam_type_id: q.exam_type_id,
+        year: q.years.year,
+        year_id: q.year_id
     }));
     res.json(questions);
 });
 
-// Add a new question (from admin website)
+// POST /questions – create new question
 app.post('/questions', async (req, res) => {
     const {
         subject_id, exam_type_id, year_id,
@@ -172,12 +172,7 @@ app.post('/questions', async (req, res) => {
     res.status(201).json(data[0]);
 });
 
-// Start server
-app.listen(port, () => {
-    console.log(`Learning Lounge API running on port ${port}`);
-});
-
-// PUT /questions/:id – Update a question
+// PUT /questions/:id – update a question
 app.put('/questions/:id', async (req, res) => {
     const { id } = req.params;
     const {
@@ -200,10 +195,15 @@ app.put('/questions/:id', async (req, res) => {
     res.json(data[0]);
 });
 
-// DELETE /questions/:id – Delete a question
+// DELETE /questions/:id – delete a question
 app.delete('/questions/:id', async (req, res) => {
     const { id } = req.params;
     const { error } = await supabase.from('questions').delete().eq('id', id);
     if (error) return res.status(500).json({ error: error.message });
     res.status(204).send();
+});
+
+// Start server
+app.listen(port, () => {
+    console.log(`Learning Lounge API running on port ${port}`);
 });
