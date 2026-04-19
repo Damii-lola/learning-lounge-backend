@@ -1,4 +1,4 @@
-// server.js (full)
+// server.js - Learning Lounge Backend API
 const express = require('express');
 const cors = require('cors');
 const { createClient } = require('@supabase/supabase-js');
@@ -7,14 +7,17 @@ require('dotenv').config();
 const app = express();
 const port = process.env.PORT || 3000;
 
-app.use(cors());
+// Middleware
+app.use(cors()); // Allow requests from your app and website
 app.use(express.json());
 
+// Supabase Client (using service_role key for full access)
+// WARNING: Keep this key secret! Never expose it in frontend code.
 const supabaseUrl = process.env.SUPABASE_URL;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Helper: get exam type ID from name
+// Helper: get exam type ID from name (used in /questions filtering)
 async function getExamTypeId(name) {
     const { data } = await supabase
         .from('exam_types')
@@ -24,9 +27,12 @@ async function getExamTypeId(name) {
     return data?.id;
 }
 
-// -------------------- SUBJECTS --------------------
+// ==================== SUBJECTS ====================
 app.get('/subjects', async (req, res) => {
-    const { data, error } = await supabase.from('subjects').select('*').order('name');
+    const { data, error } = await supabase
+        .from('subjects')
+        .select('*')
+        .order('name');
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
 });
@@ -48,14 +54,18 @@ app.delete('/subjects/:id', async (req, res) => {
     res.status(204).send();
 });
 
-// -------------------- EXAM TYPES --------------------
+// ==================== EXAM TYPES ====================
 app.get('/exam-types', async (req, res) => {
-    const { data, error } = await supabase.from('exam_types').select('*').order('name');
+    const { data, error } = await supabase
+        .from('exam_types')
+        .select('*')
+        .order('name');
     if (error) return res.status(500).json({ error: error.message });
     res.json(data);
 });
 
-// -------------------- YEARS --------------------
+// ==================== YEARS ====================
+// Get all years (ordered newest first)
 app.get('/years', async (req, res) => {
     const { data, error } = await supabase
         .from('years')
@@ -82,28 +92,22 @@ app.delete('/years/:id', async (req, res) => {
     res.status(204).send();
 });
 
-// -------------------- YEARS AVAILABLE (for app) --------------------
+// ==================== YEARS AVAILABLE (for app) ====================
+// FIXED: Returns ALL years from the years table (newly added years appear immediately)
 app.get('/years-available', async (req, res) => {
-    const { subject_id, exam_type } = req.query;
-    let query = supabase
-        .from('questions')
-        .select('year_id, years!inner(year)')
+    const { data, error } = await supabase
+        .from('years')
+        .select('year')
         .order('year', { ascending: false });
-
-    if (subject_id) query = query.eq('subject_id', subject_id);
-    if (exam_type && exam_type !== 'All') {
-        const examId = await getExamTypeId(exam_type);
-        if (examId) query = query.eq('exam_type_id', examId);
-    }
-
-    const { data, error } = await query;
+    
     if (error) return res.status(500).json({ error: error.message });
-
-    const years = [...new Set(data.map(item => item.years.year))];
+    
+    const years = data.map(item => item.year);
     res.json(years);
 });
 
-// -------------------- QUESTIONS --------------------
+// ==================== QUESTIONS ====================
+// Get questions filtered by subject, year, and exam type
 app.get('/questions', async (req, res) => {
     const { subject_id, year, exam_type } = req.query;
     
@@ -133,6 +137,7 @@ app.get('/questions', async (req, res) => {
     const { data, error } = await query;
     if (error) return res.status(500).json({ error: error.message });
     
+    // Transform to cleaner format expected by app
     const questions = data.map(q => ({
         id: q.id,
         text: q.question_text,
@@ -146,6 +151,7 @@ app.get('/questions', async (req, res) => {
     res.json(questions);
 });
 
+// Add a new question (from admin website)
 app.post('/questions', async (req, res) => {
     const {
         subject_id, exam_type_id, year_id,
@@ -166,6 +172,7 @@ app.post('/questions', async (req, res) => {
     res.status(201).json(data[0]);
 });
 
+// Start server
 app.listen(port, () => {
     console.log(`Learning Lounge API running on port ${port}`);
 });
